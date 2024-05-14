@@ -26,13 +26,15 @@ def extract():
 
 
 def transform(dataframes: dict) -> dict:
-    dataframes["DimCompanies"] = pd.DataFrame(
-        dataframes["companies"].copy(), columns=["company_id", "name"]
-    ).merge(
-        pd.DataFrame(dataframes["company_industries"]).copy(),
-        on="company_id",
-        how="left",
-    )
+    dataframes["DimCompanies"] = (
+        pd.DataFrame(
+            dataframes["companies"].copy(), columns=["company_id", "name"]
+        ).merge(
+            pd.DataFrame(dataframes["company_industries"]).copy(),
+            on="company_id",
+            how="left",
+        )
+    ).drop_duplicates()
 
     dataframes["DimSalaries"] = pd.DataFrame(
         dataframes["salaries"].copy(),
@@ -44,7 +46,7 @@ def transform(dataframes: dict) -> dict:
             "pay_period",
             "currency",
         ],
-    )
+    ).drop_duplicates()
 
     dataframes["DimJobs"] = (
         pd.DataFrame(
@@ -57,7 +59,12 @@ def transform(dataframes: dict) -> dict:
             how="left",
         )
         .rename(columns={"type": "benefit", "formatted_work_type": "work_type"})
-    )
+    ).drop_duplicates()
+
+    dataframes["DimLocations"] = pd.DataFrame(
+        dataframes["companies"].copy(),
+        columns=["company_id", "state", "country", "city", "zip_code", "address"],
+    ).drop_duplicates()
 
     del dataframes["companies"]
     del dataframes["company_industries"]
@@ -72,7 +79,16 @@ def main():
     dataframes = extract()
     dataframes = transform(dataframes)
     # load(dataframes)
-    print(dataframes.keys())
+
+    output_folder = "./output/"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    for key, df in dataframes.items():
+        if key.startswith("Dim"):
+            output_file = os.path.join(output_folder, f"{key}.csv")
+            df.to_csv(output_file, index=False)
+
+    print("done")
 
 
 if __name__ == "__main__":
