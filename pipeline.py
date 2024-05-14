@@ -37,17 +37,53 @@ def transform(dataframes: dict) -> dict:
     ).drop_duplicates()
 
     dataframes["DimSalaries"] = pd.DataFrame(
-        dataframes["salaries"].copy(),
+        dataframes["salaries"]
+        .copy()
+        .merge(pd.DataFrame(dataframes["postings"]), on="job_id", how="inner")
+    ).drop_duplicates()
+
+    dataframes["DimBenefits"] = pd.DataFrame(
+        pd.DataFrame(dataframes["postings"]).copy().merge(on="job_id", how="left")
+    ).drop_duplicates()
+    dataframes["DimBenefits"]["benefit_id"] = range(
+        1, len(dataframes["DimBenefits"]) + 1
+    )
+
+    dataframes["Jobs"] = pd.DataFrame(
+        dataframes["postings"].copy(),
         columns=[
+            "job_id",
+            "company_id",
             "salary_id",
-            "max_salary",
-            "min_salary",
-            "med_salary",
-            "pay_period",
-            "currency",
+            "title",
+            "views",
+            "applies",
+            "remote_allowed",
+            "application_type",
+            "formatted_experience_level",
+            "original_listed_time",
+            "listed_time",
+            "closed_time",
+            "expiry",
+            # "location",
+            # "posting_domain",
+            # "sponsored",
+            # "job_posting_url",
+            # "application_url",
         ],
     ).drop_duplicates()
 
+    dataframes["Jobs"]["company_id"] = dataframes["Jobs"]["company_id"].map(
+        dataframes["DimCompanies"].set_index("company_id")["company_id"]
+    )
+    dataframes["Jobs"]["salary_id"] = dataframes["Jobs"]["salary_id"].map(
+        dataframes["DimSalaries"].set_index("salary_id")["salary_id"]
+    )
+    dataframes["Jobs"]["benefit_id"] = dataframes["Jobs"]["benefit_id"].map(
+        dataframes["DimBenefits"].set_index("benefit_id")["benefit_id"]
+    )
+
+    """
     dataframes["DimJobs"] = (
         pd.DataFrame(
             dataframes["postings"].copy(),
@@ -66,10 +102,21 @@ def transform(dataframes: dict) -> dict:
         columns=["company_id", "state", "country", "city", "zip_code", "address"],
     ).drop_duplicates()
 
+     dataframes["DimLocations"]["location_id"] = range(
+        1, len(dataframes["DimLocations"]) + 1
+    )
+    dataframes["Jobs"]["location_id"] = dataframes["Jobs"]["location"].map(
+        dataframes["DimLocations"].set_index("address")["location_id"]
+    )
+    dataframes["Jobs"]["job_id"] = dataframes["Jobs"]["job_id"].map(
+        dataframes["DimJobs"].set_index("job_id")["job_id"]
+    )
+    """
+
     del dataframes["companies"]
     del dataframes["company_industries"]
     del dataframes["salaries"]
-    del dataframes["postings"]
+    # del dataframes["postings"]
     del dataframes["benefits"]
 
     return dataframes
